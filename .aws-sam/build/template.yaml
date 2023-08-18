@@ -1,0 +1,148 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: sam-app-1
+Transform:
+- AWS::Serverless-2016-10-31
+Resources:
+  getAllItemsFunctionToTableConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: getAllItemsFunction
+      Destination:
+        Id: SampleTable
+      Permissions:
+      - Read
+  getByIdFunctionToTableConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: getByIdFunction
+      Destination:
+        Id: SampleTable
+      Permissions:
+      - Read
+  putItemFunctionToTableConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: putItemFunction
+      Destination:
+        Id: SampleTable
+      Permissions:
+      - Write
+  getAllItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/get-all-items.getAllItemsHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP get method to get all items from
+        a DynamoDB table.
+      Environment:
+        Variables:
+          SAMPLE_TABLE:
+            Ref: SampleTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: GET
+      CodeUri: getAllItemsFunction
+    Metadata:
+      SamResourceId: getAllItemsFunction
+  getByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/get-by-id.getByIdHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP get method to get one item by
+        id from a DynamoDB table.
+      Environment:
+        Variables:
+          SAMPLE_TABLE:
+            Ref: SampleTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /{id}
+            Method: GET
+      CodeUri: getByIdFunction
+    Metadata:
+      SamResourceId: getByIdFunction
+  putItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/put-item.putItemHandler
+      Runtime: nodejs14.x
+      MemorySize: 128
+      Timeout: 100
+      Description: A simple example includes a HTTP post method to add one item to
+        a DynamoDB table.
+      Environment:
+        Variables:
+          SAMPLE_TABLE:
+            Ref: SampleTable
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /
+            Method: POST
+      Policies:
+      - SQSSendMessagePolicy:
+          QueueName:
+            Ref: SimpleQueue
+      CodeUri: putItemFunction
+    Metadata:
+      SamResourceId: putItemFunction
+  SampleTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: id
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+  SimpleQueue:
+    Type: AWS::SQS::Queue
+  SQSPayloadLogger:
+    Type: AWS::Serverless::Function
+    Properties:
+      Description: A Lambda function that logs the payload of messages sent to an
+        associated SQS queue.
+      Runtime: nodejs14.x
+      Architectures:
+      - x86_64
+      Handler: src/handlers/sqs-payload-logger.sqsPayloadLoggerHandler
+      Environment:
+        Variables:
+          QUEUE_URL:
+            Fn::GetAtt:
+            - SimpleQueue
+            - Arn
+      Events:
+        SQSQueueEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - SimpleQueue
+              - Arn
+      MemorySize: 128
+      Timeout: 25
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      CodeUri: SQSPayloadLogger
+    Metadata:
+      SamResourceId: SQSPayloadLogger
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for Prod stage
+    Value:
+      Fn::Sub: https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/
