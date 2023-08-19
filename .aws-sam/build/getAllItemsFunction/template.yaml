@@ -152,9 +152,12 @@ Resources:
             Queue: !GetAtt SimpleQueue.Arn
       MemorySize: 128
       Timeout: 25 # Chosen to be less than the default SQS Visibility Timeout of 30 seconds
-      Policies:
+      #Policies:
         # Give Lambda basic execution Permission to the helloFromLambda
-        - AWSLambdaBasicExecutionRole
+      #  - AWSLambdaBasicExecutionRole
+      Policies:
+        - SQSSendMessagePolicy:
+            QueueName: !Ref SimpleQueue
 
 Outputs:
   WebEndpoint:

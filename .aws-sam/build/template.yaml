@@ -137,7 +137,9 @@ Resources:
       MemorySize: 128
       Timeout: 25
       Policies:
-      - AWSLambdaBasicExecutionRole
+      - SQSSendMessagePolicy:
+          QueueName:
+            Ref: SimpleQueue
       CodeUri: SQSPayloadLogger
     Metadata:
       SamResourceId: SQSPayloadLogger
